@@ -1,5 +1,5 @@
 /*
-  HandmadeMath.h v1.10.1
+  HandmadeMath.h v1.10.2
 
   This is a single header file with a bunch of useful functions for game and
   graphics math operations.
@@ -44,6 +44,7 @@
      #define HMM_ACOSF MyACosF
      #define HMM_ATANF MyATanF
      #define HMM_ATAN2F MYATan2F
+     #define HMM_FABS MyFAbs
 
   Provide your own implementations of SinF, CosF, TanF, ACosF, ATanF, ATan2F,
   ExpF, and LogF in EXACTLY one C or C++ file that includes this header,
@@ -58,6 +59,7 @@
      #define HMM_ACOSF MyACosF
      #define HMM_ATANF MyATanF
      #define HMM_ATAN2F MyATan2F
+     #define HMM_FABS MyFAbs
      #define HANDMADE_MATH_IMPLEMENTATION
      #include "HandmadeMath.h"
 
@@ -150,7 +152,7 @@ extern "C"
 
 #if !defined(HMM_SINF) || !defined(HMM_COSF) || !defined(HMM_TANF) || \
     !defined(HMM_SQRTF) || !defined(HMM_EXPF) || !defined(HMM_LOGF) || \
-    !defined(HMM_ACOSF) || !defined(HMM_ATANF)|| !defined(HMM_ATAN2F)
+    !defined(HMM_ACOSF) || !defined(HMM_ATANF)|| !defined(HMM_ATAN2F) || !defined(HMM_FABS)
 #include <math.h>
 #endif
 
@@ -190,8 +192,13 @@ extern "C"
 #define HMM_ATAN2F atan2f
 #endif
 
+#ifndef HMM_FABS
+#define HMM_FABS fabs
+#endif
+
 #define HMM_PI32 3.14159265359f
 #define HMM_PI 3.14159265358979323846
+#define HMM_FLOAT_EPSILON 1.19209290E-07F 
 
 #define HMM_MIN(a, b) (a) > (b) ? (b) : (a)
 #define HMM_MAX(a, b) (a) < (b) ? (b) : (a)
@@ -487,6 +494,12 @@ HMM_INLINE float HMM_LogF(float Float)
     float Result = HMM_LOGF(Float);
 
     return (Result);
+}
+
+HMM_INLINE float HMM_FAbs(float Float)
+{
+    float Result = HMM_FABS(Float);
+    return(Result);
 }
 
 COVERAGE(HMM_SquareRootF, 1)
@@ -978,12 +991,17 @@ HMM_INLINE hmm_vec4 HMM_DivideVec4f(hmm_vec4 Left, float Right)
     return (Result);
 }
 
+HMM_INLINE hmm_bool HMM_AreFloatsSame(float InputOne, float InputTwo)
+{
+    return(HMM_FAbs(InputOne - InputTwo) < HMM_FLOAT_EPSILON);
+}
+
 COVERAGE(HMM_EqualsVec2, 1)
 HMM_INLINE hmm_bool HMM_EqualsVec2(hmm_vec2 Left, hmm_vec2 Right)
 {
     ASSERT_COVERED(HMM_EqualsVec2);
 
-    hmm_bool Result = (Left.X == Right.X && Left.Y == Right.Y);
+    hmm_bool Result = (HMM_AreFloatsSame(Left.X, Right.X) && HMM_AreFloatsSame(Left.Y, Right.Y));
 
     return (Result);
 }
@@ -993,7 +1011,7 @@ HMM_INLINE hmm_bool HMM_EqualsVec3(hmm_vec3 Left, hmm_vec3 Right)
 {
     ASSERT_COVERED(HMM_EqualsVec3);
 
-    hmm_bool Result = (Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z);
+    hmm_bool Result = (HMM_AreFloatsSame(Left.X, Right.X) && HMM_AreFloatsSame(Left.Y, Right.Y) && HMM_AreFloatsSame(Left.Z, Right.Z));
 
     return (Result);
 }
@@ -1002,8 +1020,14 @@ COVERAGE(HMM_EqualsVec4, 1)
 HMM_INLINE hmm_bool HMM_EqualsVec4(hmm_vec4 Left, hmm_vec4 Right)
 {
     ASSERT_COVERED(HMM_EqualsVec4);
+    
+    hmm_bool Result;
 
-    hmm_bool Result = (Left.X == Right.X && Left.Y == Right.Y && Left.Z == Right.Z && Left.W == Right.W);
+#if HANDMADE_MATH__USE_SSE
+    Result = _mm_movemask_ps(_mm_cmpeq_ps(Left.InternalElementsSSE, Right.InternalElementsSSE)) == 0xF ? 1 : 0;
+#else
+    Result = (HMM_AreFloatsSame(Left.X, Right.X) && HMM_AreFloatsSame(Left.Y, Right.Y) && HMM_AreFloatsSame(Left.Z, Right.Z) && HMM_AreFloatsSame(Left.W, Right.W));
+#endif
 
     return (Result);
 }
